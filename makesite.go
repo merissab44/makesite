@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"html/template"
 	"io/ioutil"
 	"os"
@@ -24,6 +25,17 @@ func main() {
 	//create flag for file
 	filePtr := flag.String("file", "", "file to read")
 	flag.Parse()
+
+	dirPtr := flag.String("dir", "", "directory to read")
+	flag.Parse()
+
+	files, err := ioutil.ReadDir(*dirPtr)
+
+	// print all the files
+	for _, file := range files {
+		fmt.Println(file.Name())
+	}
+
 	// replace the .txt with .html
 	htmlpath := func() string {
 		return strings.Replace(*filePtr, ".txt", ".html", -1)
