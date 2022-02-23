@@ -5,7 +5,8 @@ import (
 	"html/template"
 	"io/ioutil"
 	"os"
-	"path/filepath"
+
+	// "path/filepath"
 	"strings"
 
 	"github.com/gomarkdown/markdown"
@@ -35,35 +36,37 @@ func mdToHtml(fileName string) {
 	if err != nil {
 		panic(err)
 	}
-	// replace markdown extension with html extension
-	htmlFileName := strings.Split(fileName, ".")[0] + ".html"
-	md := markdown.ToHTML(fileContent, nil, nil)
-	newFile, err := os.Create(htmlFileName)
-	if err != nil {
-		panic(err)
+	if strings.HasSuffix(fileName, ".md") {
+		// replace markdown extension with html extension
+		htmlFileName := strings.Replace(fileName, ".md", ".html", 1)
+		md := markdown.ToHTML(fileContent, nil, nil)
+		newFile, err := os.Create(htmlFileName)
+		if err != nil {
+			panic(err)
+		}
+		// write header to html file
+		_, headererr := newFile.WriteString("<!doctype html><html lang='en'><head><meta charset='utf-8'><title>Untitled Custom SSG</title></head><body>")
+		if headererr != nil {
+			panic(err)
+		}
+		// write markdown to html file
+		_, contenterr := newFile.Write(md)
+		if contenterr != nil {
+			panic(err)
+		}
+		// write footer to html file
+		_, footererr := newFile.WriteString("</body></html>")
+		if footererr != nil {
+			panic(err)
+		}
+		newFile.Close()
 	}
-	// write header to html file
-	_, headererr := newFile.WriteString("<!doctype html><html lang='en'><head><meta charset='utf-8'><title>Untitled Custom SSG</title></head><body>")
-	if headererr != nil {
-		panic(err)
-	}
-	// write markdown to html file
-	_, contenterr := newFile.Write(md)
-	if contenterr != nil {
-		panic(err)
-	}
-	// write footer to html file
-	_, footererr := newFile.WriteString("</body></html>")
-	if footererr != nil {
-		panic(err)
-	}
-	newFile.Close()
 }
 
 func convertToHtml(newFileName string) {
-	if filepath.Ext(newFileName) == ".txt" {
+	if strings.HasSuffix(newFileName, ".txt") {
 		// replace text extension with html extension
-		htmlFileName := strings.Split(newFileName, ".")[0] + ".html"
+		htmlFileName := strings.Replace(newFileName, ".txt", ".html", 1)
 		fileToConvert := newFileName
 		fileData := readFile(fileToConvert)
 		header := fileData[0]
