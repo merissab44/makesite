@@ -2,95 +2,132 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"html/template"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/gomarkdown/markdown"
 )
 
-// Page holds all the information we need to generate a new
-// HTML page from a text file on the filesystem.
-type Page struct {
-	TextFilePath string
-	TextFileName string
-	HTMLPagePath string
-	Content      string
+type Content struct {
+	Header     string
+	Paragraphs []paragraph
+}
+type paragraph struct {
+	Data string
 }
 
-func mdToHtml(fileName string) {
+// Read in first-post.txt
+func readFile(fileName string) []string {
 	fileContents, err := ioutil.ReadFile(fileName)
 	if err != nil {
 		panic(err)
 	}
-	outputfileHtml := strings.Replace(fileName, ".md", ".html", 1)
-	md := markdown.ToHTML(fileContents, nil, nil)
-	newFile, err := os.Create(outputfileHtml)
-	// create the template
-	template := template.Must(template.New("template.tmpl").ParseFiles("template.tmpl"))
-	template.Execute(newFile, md)
+	fileData := strings.Split(string(fileContents), "\n")
+	return fileData
+}
+
+func mdToHtml(fileName string) {
+	// read markdown file
+	fileContent, err := ioutil.ReadFile(fileName)
 	if err != nil {
 		panic(err)
 	}
+	// replace markdown extension with html extension
+	htmlFileName := strings.Split(fileName, ".")[0] + ".html"
+	md := markdown.ToHTML(fileContent, nil, nil)
+	newFile, err := os.Create(htmlFileName)
+	if err != nil {
+		panic(err)
+	}
+	// write header to html file
+	_, headererr := newFile.WriteString("<!doctype html><html lang='en'><head><meta charset='utf-8'><title>Untitled Custom SSG</title></head><body>")
+	if headererr != nil {
+		panic(err)
+	}
+	// write markdown to html file
+	_, contenterr := newFile.Write(md)
+	if contenterr != nil {
+		panic(err)
+	}
+	// write footer to html file
+	_, footererr := newFile.WriteString("</body></html>")
+	if footererr != nil {
+		panic(err)
+	}
+	newFile.Close()
+}
 
+func convertToHtml(newFileName string) {
+	if filepath.Ext(newFileName) == ".txt" {
+		// replace text extension with html extension
+		htmlFileName := strings.Split(newFileName, ".")[0] + ".html"
+		fileToConvert := newFileName
+		fileData := readFile(fileToConvert)
+		header := fileData[0]
+		//Create new Content struct
+		var bodyContent []paragraph
+		for line := 1; line < len(fileData); line++ {
+			if fileData[line] != "" {
+				convertedFileData := fileData[line]
+				newParagraph := paragraph{Data: convertedFileData}
+				bodyContent = append(bodyContent, newParagraph)
+			}
+		}
+		//pass data to template
+		htmlTemplate := Content{Header: header, Paragraphs: bodyContent}
+		templateParse := template.Must(template.New("template.tmpl").ParseFiles("template.tmpl"))
+		newFile, err := os.Create(htmlFileName)
+		if err != nil {
+			panic(err)
+		}
+		templateParse.Execute(newFile, htmlTemplate)
+	}
 }
 
 func main() {
-	filePath := "filePath"
-	//create flag for file
-	filePtr := flag.String("file", "", "file to read")
-	//create flag for directory
-	dirPtr := flag.String("dir", "", "directory to read from")
-	// create a flag for .md file
-	mdFlag := flag.String("md", "test.md", "Render a .md file to HTML")
-
-	if *mdFlag != "test.md" {
-		mdToHtml(*mdFlag)
-		os.Exit(0)
-	}
+	//dir flag
+	dirPtr := flag.String("dir", ".", "Directory to parse")
+	//file flag
+	filePtr := flag.String("file", "first-post.txt", "file to convert to html")
+	//md flag
+	mdPtr := flag.String("md", "test.md", "markdown file to convert to html")
+	// parse flags
 	flag.Parse()
 
-	if *dirPtr != "" {
-		files, err := ioutil.ReadDir(*dirPtr)
+	if *mdPtr != "test.md" {
+		mdToHtml(*mdPtr)
+		os.Exit(0)
+	}
+	//output all txt files in current directory
+	dir := *dirPtr
+	if *dirPtr != "." {
+		files, err := ioutil.ReadDir(dir)
 		if err != nil {
-			fmt.Println(err)
+			panic(err)
 		}
 		for _, file := range files {
-			// read the file
-			fileContents, err := ioutil.ReadFile(file.Name())
-			if strings.HasSuffix(file.Name(), ".git") {
-				err = nil
-			}
-			if strings.HasSuffix(file.Name(), ".vscode") {
-				err = nil
-			}
-			if err != nil {
-				fmt.Println("Error reading file:", err)
-				continue
-			}
-			// if the file is a text file
-			if strings.HasSuffix(file.Name(), ".txt") {
-				// replace text file with html file
-				filepath := strings.Replace(file.Name(), ".txt", ".html", 1)
-				page := Page{
-					TextFilePath: filePath,
-					TextFileName: *filePtr,
-					HTMLPagePath: filepath,
-					Content:      string(fileContents),
-				}
-				// create the template t
-				t := template.Must(template.New("template.tmpl").ParseFiles("template.tmpl"))
-				// Create a new, blank HTML file.
-				newFile, err := os.Create(filepath)
-				if err != nil {
-					panic(err)
-				}
-				// inject the newly created page into the new htmlfile template
-				t.Execute(newFile, page)
-			}
-			continue
+			convertToHtml(file.Name())
 		}
+		os.Exit(0)
 	}
+	//generate output file name
+	if *filePtr != "first-post.txt" {
+		outputFile := *filePtr
+		convertToHtml(outputFile)
+		os.Exit(0)
+	}
+
+	mdToHtml(*mdPtr)
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		panic(err)
+	}
+	for _, file := range files {
+		convertToHtml(file.Name())
+	}
+	textFiles := *filePtr
+	convertToHtml(textFiles)
 }
