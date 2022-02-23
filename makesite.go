@@ -26,6 +26,17 @@ func main() {
 	dirPtr := flag.String("dir", "", "directory to read from")
 	flag.Parse()
 
+	fileContents, err := ioutil.ReadFile(*filePtr)
+	if err != nil {
+		fmt.Println("Error reading file: ", err)
+		os.Exit(1)
+	}
+
+	// replace the .txt with .html
+	htmlpath := func() string {
+		return strings.Replace(*filePtr, ".txt", ".html", -1)
+	}
+
 	if *dirPtr != "" {
 		files, err := ioutil.ReadDir(*dirPtr)
 		if err != nil {
@@ -67,4 +78,19 @@ func main() {
 			continue
 		}
 	}
+	page := Page{
+		TextFilePath: filePath,
+		TextFileName: "first",
+		HTMLPagePath: htmlpath(),
+		Content:      string(fileContents),
+	}
+	// create the template t
+	t := template.Must(template.New("template.tmpl").ParseFiles("template.tmpl"))
+	// Create a new, blank HTML file.
+	newFile, err := os.Create(htmlpath())
+	if err != nil {
+		panic(err)
+	}
+	// inject the newly created page into the new htmlfile named new.html
+	t.Execute(newFile, page)
 }
