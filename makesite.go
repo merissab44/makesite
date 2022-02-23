@@ -34,6 +34,12 @@ func main() {
 		for _, file := range files {
 			// read the file
 			fileContents, err := ioutil.ReadFile(file.Name())
+			if strings.HasSuffix(file.Name(), ".git") {
+				err = nil
+			}
+			if strings.HasSuffix(file.Name(), ".vscode") {
+				err = nil
+			}
 			if err != nil {
 				fmt.Println("Error reading file:", err)
 				continue
