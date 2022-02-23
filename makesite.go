@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+
+	"github.com/gomarkdown/markdown"
 )
 
 // Page holds all the information we need to generate a new
@@ -18,24 +20,37 @@ type Page struct {
 	Content      string
 }
 
+func mdToHtml(fileName string) {
+	fileContents, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		panic(err)
+	}
+	outputfileHtml := strings.Replace(fileName, ".md", ".html", 1)
+	md := markdown.ToHTML(fileContents, nil, nil)
+	newFile, err := os.Create(outputfileHtml)
+	// create the template
+	template := template.Must(template.New("template.tmpl").ParseFiles("template.tmpl"))
+	template.Execute(newFile, md)
+	if err != nil {
+		panic(err)
+	}
+
+}
+
 func main() {
 	filePath := "filePath"
 	//create flag for file
 	filePtr := flag.String("file", "", "file to read")
 	//create flag for directory
 	dirPtr := flag.String("dir", "", "directory to read from")
+	// create a flag for .md file
+	mdFlag := flag.String("md", "test.md", "Render a .md file to HTML")
+
+	if *mdFlag != "test.md" {
+		mdToHtml(*mdFlag)
+		os.Exit(0)
+	}
 	flag.Parse()
-
-	fileContents, err := ioutil.ReadFile(*filePtr)
-	if err != nil {
-		fmt.Println("Error reading file: ", err)
-		os.Exit(1)
-	}
-
-	// replace the .txt with .html
-	htmlpath := func() string {
-		return strings.Replace(*filePtr, ".txt", ".html", -1)
-	}
 
 	if *dirPtr != "" {
 		files, err := ioutil.ReadDir(*dirPtr)
@@ -78,19 +93,4 @@ func main() {
 			continue
 		}
 	}
-	page := Page{
-		TextFilePath: filePath,
-		TextFileName: "first",
-		HTMLPagePath: htmlpath(),
-		Content:      string(fileContents),
-	}
-	// create the template t
-	t := template.Must(template.New("template.tmpl").ParseFiles("template.tmpl"))
-	// Create a new, blank HTML file.
-	newFile, err := os.Create(htmlpath())
-	if err != nil {
-		panic(err)
-	}
-	// inject the newly created page into the new htmlfile named new.html
-	t.Execute(newFile, page)
 }
